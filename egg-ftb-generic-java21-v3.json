@@ -1,0 +1,56 @@
+{
+  "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-04-04T22:10:00+00:00",
+  "name": "FTB Generic (Java 21) v3",
+  "author": "openai@example.com",
+  "description": "FTB modpack installer egg for Java 21 with editable FTB pack/version IDs. Installs via the FTB Linux server installer, force/noninteractive, and patches run.sh to use the container Java instead of bundled JRE paths.",
+  "features": [
+    "eula",
+    "java_version",
+    "pid_limit"
+  ],
+  "docker_images": {
+    "Java 21": "ghcr.io/pterodactyl/yolks:java_21"
+  },
+  "file_denylist": [],
+  "startup": "/bin/sh /home/container/run.sh",
+  "config": {
+    "files": "{\r\n  \"server.properties\": {\r\n    \"parser\": \"properties\",\r\n    \"find\": {\r\n      \"server-ip\": \"0.0.0.0\",\r\n      \"server-port\": \"{{server.build.default.port}}\",\r\n      \"query.port\": \"{{server.build.default.port}}\"\r\n    }\r\n  }\r\n}",
+    "startup": "{\r\n  \"done\": \"Done (\",\r\n  \"userInteraction\": []\r\n}",
+    "logs": "{}",
+    "stop": "stop"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/ash\nset -e\nmkdir -p /mnt/server\ncd /mnt/server\n\necho 'Downloading FTB installer...'\ncurl -L -o installer \"https://api.feed-the-beast.com/v1/modpacks/public/modpack/${FTB_PACK_ID}/${FTB_VERSION_ID}/server/linux\"\nchmod +x installer\n\necho 'Running FTB installer...'\n./installer -auto -force -pack \"${FTB_PACK_ID}\" -version \"${FTB_VERSION_ID}\" -dir /mnt/server\n\nif [ ! -f /mnt/server/run.sh ]; then\n  echo 'run.sh was not created. Listing /mnt/server for debugging:'\n  ls -lah /mnt/server\n  exit 1\nfi\n\necho 'Patching run.sh to use container Java...'\ncp /mnt/server/run.sh /mnt/server/run.sh.bak\nawk '{ gsub(/jre\\/[^[:space:]]*\\/bin\\/java/, \"java\"); print }' /mnt/server/run.sh.bak > /mnt/server/run.sh\nchmod +x /mnt/server/run.sh\n\nif grep -q 'jre/.*/bin/java' /mnt/server/run.sh; then\n  echo 'Failed to patch run.sh. Current contents:'\n  nl -ba /mnt/server/run.sh | sed -n '1,40p'\n  exit 1\nfi\n\necho 'run.sh patched successfully.'\necho 'Install complete.'\n",
+      "container": "ghcr.io/pterodactyl/installers:alpine",
+      "entrypoint": "ash"
+    }
+  },
+  "variables": [
+    {
+      "name": "FTB Modpack ID",
+      "description": "The FTB modpack ID to install. StoneBlock 4 is 130.",
+      "env_variable": "FTB_PACK_ID",
+      "default_value": "130",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer",
+      "field_type": "text"
+    },
+    {
+      "name": "FTB Version ID",
+      "description": "The exact FTB modpack version ID to install. The tested StoneBlock 4 version in this setup was 100256.",
+      "env_variable": "FTB_VERSION_ID",
+      "default_value": "100256",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer",
+      "field_type": "text"
+    }
+  ]
+}
